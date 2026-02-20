@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+}
+
+enum ImovelStatus {
+  ATIVO
+  INATIVO
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Imovel {
+  id         String      @id @default(cuid())
+  titulo     String
+  tipo       String
+  finalidade String
+  bairro     String
+  cidade     String
+  preco      Decimal     @db.Decimal(14, 2)
+  descricao  String?
+  status     ImovelStatus @default(ATIVO)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
