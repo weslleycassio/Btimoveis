@@ -1,7 +1,7 @@
 import { ImovelStatus } from '@prisma/client';
 import { z } from 'zod';
 
-export const createImovelSchema = z.object({
+const imovelBaseFieldsSchema = z.object({
   titulo: z.string().min(1),
   tipo: z.string().min(1),
   finalidade: z.string().min(1),
@@ -13,7 +13,11 @@ export const createImovelSchema = z.object({
   corretorCaptadorId: z.string().min(1).optional(),
 });
 
-export const updateImovelSchema = createImovelSchema.partial();
+export const createImovelSchema = imovelBaseFieldsSchema;
+
+export const updateImovelSchema = imovelBaseFieldsSchema.partial().extend({
+  motivoEdicao: z.string().trim().min(3).max(255),
+});
 
 export const listImoveisQuerySchema = z.object({
   tipo: z.string().optional(),

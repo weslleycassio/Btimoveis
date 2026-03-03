@@ -1,6 +1,15 @@
 import { Prisma, UserRole } from '@prisma/client';
 import { prisma } from '../../db/prisma';
-import { CreateImovelInput, ListImoveisQuery, UpdateImovelInput } from './imoveis.schema';
+import { ForbiddenError, NotFoundError } from '../../utils/app-error';
+import {
+  CreateImovelInput,
+  ListImoveisQuery,
+  UpdateImovelInput,
+} from './imoveis.schema';
+import {
+  assertCanEditImovel,
+  resolveUpdatedCorretorCaptadorId,
+} from './imoveis.permissions';
 
 type AuthenticatedUser = {
   id: string;
@@ -15,7 +24,7 @@ function resolveCorretorCaptadorId(
   const isCorretor = user.role === UserRole.CORRETOR;
 
   if (!isAdminOrCord && !isCorretor) {
-    throw new Error('Usuário sem permissão para cadastrar imóvel');
+    throw new ForbiddenError('Usuário sem permissão para cadastrar imóvel');
   }
 
   if (!requestedCorretorCaptadorId) {
@@ -27,7 +36,7 @@ function resolveCorretorCaptadorId(
   }
 
   if (requestedCorretorCaptadorId !== user.id) {
-    throw new Error('Corretor só pode cadastrar imóvel para si mesmo');
+    throw new ForbiddenError('Corretor só pode cadastrar imóvel para si mesmo');
   }
 
   return user.id;
@@ -40,7 +49,7 @@ async function ensureCorretorExists(corretorCaptadorId: string) {
   });
 
   if (!corretor) {
-    throw new Error('Corretor captador informado não existe');
+    throw new NotFoundError('Corretor captador informado não existe');
   }
 }
 
@@ -95,18 +104,56 @@ export async function getImovelById(id: string) {
   const imovel = await prisma.imovel.findUnique({ where: { id } });
 
   if (!imovel) {
-    throw new Error('Imóvel não encontrado');
+    throw new NotFoundError('Imóvel não encontrado');
   }
 
   return imovel;
 }
 
-export async function updateImovel(id: string, data: UpdateImovelInput) {
-  await getImovelById(id);
+export async function updateImovel(id: string, data: UpdateImovelInput, user: AuthenticatedUser) {
+  const imovel = await getImovelById(id);
 
-  return prisma.imovel.update({
-    where: { id },
-    data,
+  assertCanEditImovel(user, imovel);
+
+  const { motivoEdicao, ...updateData } = data;
+  const corretorCaptadorId = resolveUpdatedCorretorCaptadorId(
+    updateData.corretorCaptadorId,
+    user,
+    imovel,
+  );
+
+  await ensureCorretorExists(corretorCaptadorId);
+
+  const finalUpdateData: Prisma.ImovelUncheckedUpdateInput = {
+    ...updateData,
+    corretorCaptadorId,
+  };
+
+  const camposAlterados = Object.keys(updateData).filter((field) => {
+    if (field === 'corretorCaptadorId') {
+      return corretorCaptadorId !== imovel.corretorCaptadorId;
+    }
+
+    const fieldKey = field as keyof typeof imovel;
+    return updateData[field as keyof typeof updateData] !== imovel[fieldKey];
+  });
+
+  return prisma.$transaction(async (tx) => {
+    const updatedImovel = await tx.imovel.update({
+      where: { id },
+      data: finalUpdateData,
+    });
+
+    await tx.imovelEdicao.create({
+      data: {
+        imovelId: id,
+        editadoPorUserId: user.id,
+        motivoEdicao,
+        camposAlterados,
+      },
+    });
+
+    return updatedImovel;
   });
 }
 

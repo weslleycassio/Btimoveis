@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
+import { AppError } from '../utils/app-error';
 
 export function errorMiddleware(
   err: unknown,
@@ -12,6 +13,11 @@ export function errorMiddleware(
       message: 'Dados inválidos',
       errors: err.flatten(),
     });
+    return;
+  }
+
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({ message: err.message });
     return;
   }
 
