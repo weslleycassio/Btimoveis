@@ -26,20 +26,25 @@ model User {
   email        String   @unique
   passwordHash String
   role         UserRole
+  imoveisCaptados Imovel[] @relation("ImovelCaptador")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
 model Imovel {
-  id         String      @id @default(cuid())
-  titulo     String
-  tipo       String
-  finalidade String
-  bairro     String
-  cidade     String
-  preco      Decimal     @db.Decimal(14, 2)
-  descricao  String?
-  status     ImovelStatus @default(ATIVO)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id                String       @id @default(cuid())
+  titulo            String
+  tipo              String
+  finalidade        String
+  bairro            String
+  cidade            String
+  preco             Decimal      @db.Decimal(14, 2)
+  descricao         String?
+  status            ImovelStatus @default(ATIVO)
+  corretorCaptadorId String
+  corretorCaptador  User         @relation("ImovelCaptador", fields: [corretorCaptadorId], references: [id])
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([corretorCaptadorId])
 }
