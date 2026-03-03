@@ -8,8 +8,12 @@ import {
 import * as imoveisService from './imoveis.service';
 
 export async function createImovel(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new Error('Usuário não autenticado');
+  }
+
   const body = createImovelSchema.parse(req.body);
-  const result = await imoveisService.createImovel(body);
+  const result = await imoveisService.createImovel(body, req.user);
   res.status(201).json(result);
 }
 

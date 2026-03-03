@@ -10,6 +10,7 @@ export const createImovelSchema = z.object({
   preco: z.coerce.number().positive(),
   descricao: z.string().optional(),
   status: z.nativeEnum(ImovelStatus).optional(),
+  corretorCaptadorId: z.string().min(1).optional(),
 });
 
 export const updateImovelSchema = createImovelSchema.partial();

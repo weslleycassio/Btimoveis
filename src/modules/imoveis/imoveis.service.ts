@@ -1,9 +1,59 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { CreateImovelInput, ListImoveisQuery, UpdateImovelInput } from './imoveis.schema';
 
-export async function createImovel(data: CreateImovelInput) {
-  return prisma.imovel.create({ data });
+type AuthenticatedUser = {
+  id: string;
+  role: string;
+};
+
+function resolveCorretorCaptadorId(
+  requestedCorretorCaptadorId: string | undefined,
+  user: AuthenticatedUser,
+): string {
+  const isAdminOrCord = user.role === UserRole.ADMIN || user.role === UserRole.CORD;
+  const isCorretor = user.role === UserRole.CORRETOR;
+
+  if (!isAdminOrCord && !isCorretor) {
+    throw new Error('Usuário sem permissão para cadastrar imóvel');
+  }
+
+  if (!requestedCorretorCaptadorId) {
+    return user.id;
+  }
+
+  if (isAdminOrCord) {
+    return requestedCorretorCaptadorId;
+  }
+
+  if (requestedCorretorCaptadorId !== user.id) {
+    throw new Error('Corretor só pode cadastrar imóvel para si mesmo');
+  }
+
+  return user.id;
+}
+
+async function ensureCorretorExists(corretorCaptadorId: string) {
+  const corretor = await prisma.user.findUnique({
+    where: { id: corretorCaptadorId },
+    select: { id: true },
+  });
+
+  if (!corretor) {
+    throw new Error('Corretor captador informado não existe');
+  }
+}
+
+export async function createImovel(data: CreateImovelInput, user: AuthenticatedUser) {
+  const corretorCaptadorId = resolveCorretorCaptadorId(data.corretorCaptadorId, user);
+  await ensureCorretorExists(corretorCaptadorId);
+
+  return prisma.imovel.create({
+    data: {
+      ...data,
+      corretorCaptadorId,
+    },
+  });
 }
 
 export async function listImoveis(query: ListImoveisQuery) {
