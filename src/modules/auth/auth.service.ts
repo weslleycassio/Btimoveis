@@ -13,21 +13,27 @@ export async function register(data: RegisterInput): Promise<{ token: string }> 
 
   const passwordHash = await bcrypt.hash(data.password, 10);
 
-  const user = await prisma.user.create({
-    data: {
-      email: data.email,
-      passwordHash,
-      role: UserRole.ADMIN,
-    },
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        role: UserRole.ADMIN,
+      },
+    });
+
+    try {
+      const token = signJwt({
+        sub: String(user.id),
+        email: user.email,
+        role: user.role,
+      });
+
+      return { token };
+    } catch {
+      throw new Error('Falha ao gerar token de autenticação');
+    }
   });
-
- const token = signJwt({
-  sub: String(user.id),
-  email: user.email,
-  role: user.role,
-});
-
-  return { token };
 }
 
 export async function login(data: LoginInput): Promise<{ token: string }> {
