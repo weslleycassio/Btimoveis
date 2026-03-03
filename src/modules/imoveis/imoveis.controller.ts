@@ -30,9 +30,13 @@ export async function getImovelById(req: Request, res: Response): Promise<void> 
 }
 
 export async function updateImovel(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new Error('Usuário não autenticado');
+  }
+
   const { id } = idParamSchema.parse(req.params);
   const body = updateImovelSchema.parse(req.body);
-  const result = await imoveisService.updateImovel(id, body);
+  const result = await imoveisService.updateImovel(id, body, req.user);
   res.status(200).json(result);
 }
 

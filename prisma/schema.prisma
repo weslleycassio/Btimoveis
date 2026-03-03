@@ -27,6 +27,7 @@ model User {
   passwordHash String
   role         UserRole
   imoveisCaptados Imovel[] @relation("ImovelCaptador")
+  imovelEdicoes  ImovelEdicao[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -43,8 +44,24 @@ model Imovel {
   status            ImovelStatus @default(ATIVO)
   corretorCaptadorId String
   corretorCaptador  User         @relation("ImovelCaptador", fields: [corretorCaptadorId], references: [id])
+  edicoes           ImovelEdicao[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   @@index([corretorCaptadorId])
+}
+
+model ImovelEdicao {
+  id               String   @id @default(cuid())
+  imovelId         String
+  editadoPorUserId String
+  motivoEdicao     String
+  camposAlterados  Json?
+  createdAt        DateTime @default(now())
+
+  imovel           Imovel   @relation(fields: [imovelId], references: [id], onDelete: Cascade)
+  editadoPor       User     @relation(fields: [editadoPorUserId], references: [id], onDelete: Restrict)
+
+  @@index([imovelId])
+  @@index([editadoPorUserId])
 }
