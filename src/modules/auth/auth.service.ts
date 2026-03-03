@@ -21,11 +21,11 @@ export async function register(data: RegisterInput): Promise<{ token: string }> 
     },
   });
 
-  const token = signJwt({
-    sub: user.id,
-    email: user.email,
-    role: user.role,
-  });
+ const token = signJwt({
+  sub: String(user.id),
+  email: user.email,
+  role: user.role,
+});
 
   return { token };
 }
