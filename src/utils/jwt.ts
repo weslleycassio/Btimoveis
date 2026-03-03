@@ -1,5 +1,5 @@
-import jwt from 'jsonwebtoken';
-import { env } from '../config/env';
+import jwt, { type SignOptions } from "jsonwebtoken";
+import { env } from "../config/env";
 
 export type JwtPayload = {
   sub: string;
@@ -8,10 +8,12 @@ export type JwtPayload = {
 };
 
 export function signJwt(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRES_IN,
-    subject: payload.sub,
-  });
+  const options: SignOptions = {
+    expiresIn: (env.JWT_EXPIRES_IN ?? "1d") as SignOptions["expiresIn"],
+    // NÃO coloque subject aqui, porque você já tem sub no payload
+  };
+
+  return jwt.sign(payload, env.JWT_SECRET, options);
 }
 
 export function verifyJwt(token: string): JwtPayload {
