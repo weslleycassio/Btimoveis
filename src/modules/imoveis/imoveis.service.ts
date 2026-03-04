@@ -1,6 +1,7 @@
 import { Prisma, UserRole } from '@prisma/client';
 import { prisma } from '../../db/prisma';
-import { ForbiddenError, NotFoundError } from '../../utils/app-error';
+import { deleteObject, imageStorageRules, uploadImage } from '../../shared/storage/minio.storage';
+import { AppError, ForbiddenError, NotFoundError } from '../../utils/app-error';
 import {
   CreateImovelInput,
   ListImoveisQuery,
@@ -15,6 +16,21 @@ type AuthenticatedUser = {
   id: string;
   role: string;
 };
+
+const imovelWithImagesInclude = Prisma.validator<Prisma.ImovelInclude>()({
+  imagens: {
+    orderBy: [{ isCapa: 'desc' }, { ordem: 'asc' }, { createdAt: 'asc' }],
+    select: {
+      id: true,
+      url: true,
+      ordem: true,
+      isCapa: true,
+      mimeType: true,
+      size: true,
+      createdAt: true,
+    },
+  },
+});
 
 function resolveCorretorCaptadorId(
   requestedCorretorCaptadorId: string | undefined,
@@ -85,6 +101,7 @@ export async function listImoveis(query: ListImoveisQuery) {
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { createdAt: 'desc' },
+      include: imovelWithImagesInclude,
     }),
     prisma.imovel.count({ where }),
   ]);
@@ -101,7 +118,10 @@ export async function listImoveis(query: ListImoveisQuery) {
 }
 
 export async function getImovelById(id: string) {
-  const imovel = await prisma.imovel.findUnique({ where: { id } });
+  const imovel = await prisma.imovel.findUnique({
+    where: { id },
+    include: imovelWithImagesInclude,
+  });
 
   if (!imovel) {
     throw new NotFoundError('Imóvel não encontrado');
@@ -111,7 +131,11 @@ export async function getImovelById(id: string) {
 }
 
 export async function updateImovel(id: string, data: UpdateImovelInput, user: AuthenticatedUser) {
-  const imovel = await getImovelById(id);
+  const imovel = await prisma.imovel.findUnique({ where: { id } });
+
+  if (!imovel) {
+    throw new NotFoundError('Imóvel não encontrado');
+  }
 
   assertCanEditImovel(user, imovel);
 
@@ -157,8 +181,159 @@ export async function updateImovel(id: string, data: UpdateImovelInput, user: Au
   });
 }
 
-export async function deleteImovel(id: string) {
-  await getImovelById(id);
+export async function uploadImovelImagens(
+  imovelId: string,
+  files: Express.Request['files'],
+  user: AuthenticatedUser,
+) {
+  if (!files || files.length === 0) {
+    throw new AppError('Nenhuma imagem enviada no campo "imagens"', 400);
+  }
 
+  const imovel = await prisma.imovel.findUnique({
+    where: { id: imovelId },
+    select: {
+      id: true,
+      corretorCaptadorId: true,
+      imagens: {
+        select: { id: true },
+      },
+    },
+  });
+
+  if (!imovel) {
+    throw new NotFoundError('Imóvel não encontrado');
+  }
+
+  if (user.role !== UserRole.ADMIN && user.id !== imovel.corretorCaptadorId) {
+    throw new ForbiddenError('Você não tem permissão para adicionar imagens neste imóvel');
+  }
+
+  const totalAfterUpload = imovel.imagens.length + files.length;
+  if (totalAfterUpload > imageStorageRules.maxPerImovel) {
+    throw new AppError(`Um imóvel pode ter no máximo ${imageStorageRules.maxPerImovel} imagens`, 400);
+  }
+
+  const uploaded: Array<{ storageKey: string; url: string; size: number; mimeType: string }> = [];
+
+  try {
+    for (const file of files) {
+      const image = await uploadImage({
+        buffer: file.buffer,
+        mimeType: file.mimetype,
+        imovelId,
+        originalName: file.originalname,
+      });
+
+      uploaded.push(image);
+    }
+
+    const created = await prisma.$transaction(async (tx) => {
+      const lastImage = await tx.imovelImagem.findFirst({
+        where: { imovelId },
+        orderBy: { ordem: 'desc' },
+        select: { ordem: true },
+      });
+
+      const ordemInicial = (lastImage?.ordem ?? -1) + 1;
+      const isPrimeiraImagem = imovel.imagens.length === 0;
+
+      const imagensCriadas = await Promise.all(
+        uploaded.map((item, index) =>
+          tx.imovelImagem.create({
+            data: {
+              imovelId,
+              url: item.url,
+              storageProvider: 'minio',
+              storageKey: item.storageKey,
+              mimeType: item.mimeType,
+              size: item.size,
+              ordem: ordemInicial + index,
+              isCapa: isPrimeiraImagem && index === 0,
+              uploadedByUserId: user.id,
+            },
+            select: {
+              id: true,
+              url: true,
+              ordem: true,
+              isCapa: true,
+            },
+          }),
+        ),
+      );
+
+      return imagensCriadas;
+    });
+
+    return created;
+  } catch (error) {
+    await Promise.all(uploaded.map((item) => deleteObject(item.storageKey).catch(() => null)));
+    throw error;
+  }
+}
+
+export async function deleteImovelImagem(
+  imovelId: string,
+  imagemId: string,
+  user: AuthenticatedUser,
+): Promise<void> {
+  const image = await prisma.imovelImagem.findUnique({
+    where: { id: imagemId },
+    select: {
+      id: true,
+      imovelId: true,
+      storageKey: true,
+      isCapa: true,
+      imovel: {
+        select: {
+          corretorCaptadorId: true,
+        },
+      },
+    },
+  });
+
+  if (!image || image.imovelId !== imovelId) {
+    throw new NotFoundError('Imagem do imóvel não encontrada');
+  }
+
+  if (user.role !== UserRole.ADMIN && user.id !== image.imovel.corretorCaptadorId) {
+    throw new ForbiddenError('Você não tem permissão para remover imagens deste imóvel');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await deleteObject(image.storageKey);
+    await tx.imovelImagem.delete({ where: { id: imagemId } });
+
+    if (image.isCapa) {
+      const nextCapa = await tx.imovelImagem.findFirst({
+        where: { imovelId },
+        orderBy: [{ ordem: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true },
+      });
+
+      if (nextCapa) {
+        await tx.imovelImagem.update({
+          where: { id: nextCapa.id },
+          data: { isCapa: true },
+        });
+      }
+    }
+  });
+}
+
+export async function deleteImovel(id: string) {
+  const imovel = await prisma.imovel.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      imagens: { select: { storageKey: true } },
+    },
+  });
+
+  if (!imovel) {
+    throw new NotFoundError('Imóvel não encontrado');
+  }
+
+  await Promise.all(imovel.imagens.map((imagem) => deleteObject(imagem.storageKey).catch(() => null)));
   await prisma.imovel.delete({ where: { id } });
 }

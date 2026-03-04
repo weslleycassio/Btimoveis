@@ -35,6 +35,11 @@ export const idParamSchema = z.object({
   id: z.string().cuid(),
 });
 
+export const idAndImagemIdParamSchema = z.object({
+  id: z.string().cuid(),
+  imagemId: z.string().cuid(),
+});
+
 export type CreateImovelInput = z.infer<typeof createImovelSchema>;
 export type UpdateImovelInput = z.infer<typeof updateImovelSchema>;
 export type ListImoveisQuery = z.infer<typeof listImoveisQuerySchema>;

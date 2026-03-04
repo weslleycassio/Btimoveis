@@ -28,6 +28,7 @@ model User {
   role         UserRole
   imoveisCaptados Imovel[] @relation("ImovelCaptador")
   imovelEdicoes  ImovelEdicao[]
+  imagensEnviadas ImovelImagem[] @relation("ImovelImagemUploadedBy")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -45,10 +46,30 @@ model Imovel {
   corretorCaptadorId String
   corretorCaptador  User         @relation("ImovelCaptador", fields: [corretorCaptadorId], references: [id])
   edicoes           ImovelEdicao[]
+  imagens           ImovelImagem[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   @@index([corretorCaptadorId])
+}
+
+model ImovelImagem {
+  id               String   @id @default(cuid())
+  imovelId         String
+  url              String
+  storageProvider  String   @default("minio")
+  storageKey       String
+  mimeType         String
+  size             Int
+  ordem            Int      @default(0)
+  isCapa           Boolean  @default(false)
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  imovel           Imovel   @relation(fields: [imovelId], references: [id], onDelete: Cascade)
+  uploadedBy       User     @relation("ImovelImagemUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([imovelId])
 }
 
 model ImovelEdicao {

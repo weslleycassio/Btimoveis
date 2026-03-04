@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import {
   createImovelSchema,
+  idAndImagemIdParamSchema,
   idParamSchema,
   listImoveisQuerySchema,
   updateImovelSchema,
@@ -27,6 +28,26 @@ export async function getImovelById(req: Request, res: Response): Promise<void> 
   const { id } = idParamSchema.parse(req.params);
   const result = await imoveisService.getImovelById(id);
   res.status(200).json(result);
+}
+
+export async function uploadImovelImagens(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new Error('Usuário não autenticado');
+  }
+
+  const { id } = idParamSchema.parse(req.params);
+  const result = await imoveisService.uploadImovelImagens(id, req.files, req.user);
+  res.status(201).json(result);
+}
+
+export async function deleteImovelImagem(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw new Error('Usuário não autenticado');
+  }
+
+  const { id, imagemId } = idAndImagemIdParamSchema.parse(req.params);
+  await imoveisService.deleteImovelImagem(id, imagemId, req.user);
+  res.status(204).send();
 }
 
 export async function updateImovel(req: Request, res: Response): Promise<void> {
