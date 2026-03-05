@@ -37,7 +37,17 @@ export async function register(
   return user;
 }
 
-export async function login(data: LoginInput): Promise<{ token: string }> {
+export async function login(data: LoginInput): Promise<{
+  token: string;
+  user: {
+    id: string;
+    nome: string;
+    telefone: string;
+    email: string;
+    role: string;
+    imobiliariaId: string;
+  };
+}> {
   const user = await prisma.user.findUnique({ where: { email: data.email } });
 
   if (!user) {
@@ -57,5 +67,15 @@ export async function login(data: LoginInput): Promise<{ token: string }> {
     imobiliariaId: user.imobiliariaId,
   });
 
-  return { token };
+  return {
+    token,
+    user: {
+      id: user.id,
+      nome: user.nome,
+      telefone: user.telefone,
+      email: user.email,
+      role: user.role,
+      imobiliariaId: user.imobiliariaId,
+    },
+  };
 }
