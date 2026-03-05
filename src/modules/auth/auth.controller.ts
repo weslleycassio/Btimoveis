@@ -3,10 +3,14 @@ import { loginSchema, registerSchema } from './auth.schema';
 import * as authService from './auth.service';
 
 export async function register(req: Request, res: Response): Promise<void> {
-
   const body = registerSchema.parse(req.body);
-  console.log("chegou aqui")
-  const result = await authService.register(body);
+
+  if (!req.user) {
+    res.status(401).json({ message: 'Usuário não autenticado' });
+    return;
+  }
+
+  const result = await authService.register(body, req.user.imobiliariaId);
   res.status(201).json(result);
 }
 
