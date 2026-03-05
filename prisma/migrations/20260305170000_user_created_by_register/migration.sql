@@ -1,0 +1,2 @@
+ALTER TABLE "User"
+ADD COLUMN "createdByRegister" BOOLEAN NOT NULL DEFAULT false;
