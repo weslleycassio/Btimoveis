@@ -152,7 +152,13 @@ Request:
 }
 ```
 
-### 3) Imóveis (protegidos por JWT)
+### 3) Usuários (protegido por JWT)
+
+- `GET /usuarios` (permitido para `ADMIN` e `CORRETOR`)
+
+Retorna a listagem de usuários da mesma `imobiliariaId` do usuário autenticado, sem expor `passwordHash`.
+
+### 4) Imóveis (protegidos por JWT)
 
 - `POST /imoveis`
 - `GET /imoveis`

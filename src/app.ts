@@ -4,6 +4,7 @@ import { errorMiddleware } from './middlewares/error.middleware';
 import { authRoutes } from './modules/auth/auth.routes';
 import { imobiliariasRoutes } from './modules/imobiliarias/imobiliarias.routes';
 import { imoveisRoutes } from './modules/imoveis/imoveis.routes';
+import { usuariosRoutes } from './modules/usuarios/usuarios.routes';
 
 export const app = express();
 
@@ -17,5 +18,6 @@ app.get('/health', (_req, res) => {
 app.use('/imobiliarias', imobiliariasRoutes);
 app.use('/auth', authRoutes);
 app.use('/imoveis', imoveisRoutes);
+app.use('/usuarios', usuariosRoutes);
 
 app.use(errorMiddleware);
