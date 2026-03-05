@@ -133,7 +133,23 @@ Response:
 
 #### `POST /auth/login`
 
-Retorna token JWT com `sub`, `email`, `role` e `imobiliariaId`.
+Retorna token JWT com `sub`, `email`, `role` e `imobiliariaId`, além dos dados do usuário autenticado.
+
+Response:
+
+```json
+{
+  "token": "jwt_token",
+  "user": {
+    "id": "...",
+    "nome": "Wes",
+    "telefone": "11999999999",
+    "email": "wes@exemplo.com",
+    "role": "ADMIN",
+    "imobiliariaId": "..."
+  }
+}
+```
 
 #### `POST /auth/register`
 
