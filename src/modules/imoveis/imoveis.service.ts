@@ -2,15 +2,16 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { CreateImovelInput, ListImoveisQuery, UpdateImovelInput } from './imoveis.schema';
 
-export async function createImovel(data: CreateImovelInput) {
-  return prisma.imovel.create({ data });
+export async function createImovel(data: CreateImovelInput, imobiliariaId: string) {
+  return prisma.imovel.create({ data: { ...data, imobiliariaId } });
 }
 
-export async function listImoveis(query: ListImoveisQuery) {
+export async function listImoveis(query: ListImoveisQuery, imobiliariaId: string) {
   const { page, limit, minPreco, maxPreco, ...filters } = query;
 
   const where: Prisma.ImovelWhereInput = {
     ...filters,
+    imobiliariaId,
     preco:
       minPreco !== undefined || maxPreco !== undefined
         ? {
@@ -41,8 +42,8 @@ export async function listImoveis(query: ListImoveisQuery) {
   };
 }
 
-export async function getImovelById(id: string) {
-  const imovel = await prisma.imovel.findUnique({ where: { id } });
+export async function getImovelById(id: string, imobiliariaId: string) {
+  const imovel = await prisma.imovel.findFirst({ where: { id, imobiliariaId } });
 
   if (!imovel) {
     throw new Error('Imóvel não encontrado');
@@ -51,8 +52,8 @@ export async function getImovelById(id: string) {
   return imovel;
 }
 
-export async function updateImovel(id: string, data: UpdateImovelInput) {
-  await getImovelById(id);
+export async function updateImovel(id: string, data: UpdateImovelInput, imobiliariaId: string) {
+  await getImovelById(id, imobiliariaId);
 
   return prisma.imovel.update({
     where: { id },
@@ -60,8 +61,8 @@ export async function updateImovel(id: string, data: UpdateImovelInput) {
   });
 }
 
-export async function deleteImovel(id: string) {
-  await getImovelById(id);
+export async function deleteImovel(id: string, imobiliariaId: string) {
+  await getImovelById(id, imobiliariaId);
 
   await prisma.imovel.delete({ where: { id } });
 }

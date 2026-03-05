@@ -8,6 +8,7 @@ declare global {
         id: string;
         email: string;
         role: string;
+        imobiliariaId: string;
       };
     }
   }
@@ -34,10 +35,27 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       id: decoded.sub,
       email: decoded.email,
       role: decoded.role,
+      imobiliariaId: decoded.imobiliariaId,
     };
 
     next();
   } catch {
     res.status(401).json({ message: 'Token inválido ou expirado' });
   }
+}
+
+export function requireRole(roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ message: 'Usuário não autenticado' });
+      return;
+    }
+
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({ message: 'Sem permissão para esta operação' });
+      return;
+    }
+
+    next();
+  };
 }

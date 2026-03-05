@@ -1,10 +1,12 @@
 import bcrypt from 'bcrypt';
-import { UserRole } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { signJwt } from '../../utils/jwt';
 import { LoginInput, RegisterInput } from './auth.schema';
 
-export async function register(data: RegisterInput): Promise<{ token: string }> {
+export async function register(
+  data: RegisterInput,
+  imobiliariaId: string,
+): Promise<{ id: string; nome: string; telefone: string; email: string; role: string; imobiliariaId: string }> {
   const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
 
   if (existingUser) {
@@ -15,19 +17,24 @@ export async function register(data: RegisterInput): Promise<{ token: string }> 
 
   const user = await prisma.user.create({
     data: {
+      nome: data.nome,
+      telefone: data.telefone,
       email: data.email,
       passwordHash,
-      role: UserRole.ADMIN,
+      role: data.role,
+      imobiliariaId,
+    },
+    select: {
+      id: true,
+      nome: true,
+      telefone: true,
+      email: true,
+      role: true,
+      imobiliariaId: true,
     },
   });
 
- const token = signJwt({
-  sub: String(user.id),
-  email: user.email,
-  role: user.role,
-});
-
-  return { token };
+  return user;
 }
 
 export async function login(data: LoginInput): Promise<{ token: string }> {
@@ -47,6 +54,7 @@ export async function login(data: LoginInput): Promise<{ token: string }> {
     sub: user.id,
     email: user.email,
     role: user.role,
+    imobiliariaId: user.imobiliariaId,
   });
 
   return { token };
