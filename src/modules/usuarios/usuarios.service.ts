@@ -13,7 +13,7 @@ export async function listUsuarios(imobiliariaId: string): Promise<
   }>
 > {
   const usuarios = await prisma.user.findMany({
-    where: { imobiliariaId },
+    where: { imobiliariaId, createdByRegister: true },
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,

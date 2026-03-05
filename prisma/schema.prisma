@@ -43,6 +43,7 @@ model User {
   passwordHash  String
   role          UserRole       @default(ADMIN)
   status        RegistroStatus @default(ATIVO)
+  createdByRegister Boolean    @default(false)
   imobiliariaId String
   imobiliaria   Imobiliaria    @relation(fields: [imobiliariaId], references: [id])
   createdAt     DateTime       @default(now())
