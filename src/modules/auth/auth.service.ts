@@ -22,6 +22,7 @@ export async function register(
       email: data.email,
       passwordHash,
       role: data.role,
+      createdByRegister: true,
       imobiliariaId,
     },
     select: {
