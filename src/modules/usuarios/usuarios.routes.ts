@@ -7,3 +7,4 @@ export const usuariosRoutes = Router();
 
 usuariosRoutes.use(authMiddleware);
 usuariosRoutes.get('/', asyncHandler(usuariosController.listUsuarios));
+usuariosRoutes.put('/:id', asyncHandler(usuariosController.updateUsuario));

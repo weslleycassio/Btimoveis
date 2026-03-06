@@ -1,11 +1,15 @@
+import { RegistroStatus, UserRole } from '@prisma/client';
 import { prisma } from '../../db/prisma';
+import { UpdateUsuarioInput } from './usuarios.schema';
 
 export async function listUsuarios(imobiliariaId: string): Promise<
   Array<{
     id: string;
     nome: string;
     email: string;
-    role: string;
+    telefone: string;
+    role: UserRole;
+    ativo: boolean;
   }>
 > {
   const usuarios = await prisma.user.findMany({
@@ -15,9 +19,39 @@ export async function listUsuarios(imobiliariaId: string): Promise<
       id: true,
       nome: true,
       email: true,
+      telefone: true,
       role: true,
+      status: true,
     },
   });
 
-  return usuarios;
+  return usuarios.map((usuario) => ({
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    telefone: usuario.telefone,
+    role: usuario.role,
+    ativo: usuario.status === RegistroStatus.ATIVO,
+  }));
+}
+
+export async function updateUsuario(id: string, data: UpdateUsuarioInput) {
+  return prisma.user.update({
+    where: { id },
+    data: {
+      ...(data.role && { role: data.role }),
+      ...(data.telefone && { telefone: data.telefone }),
+      ...(typeof data.ativo === 'boolean' && {
+        status: data.ativo ? RegistroStatus.ATIVO : RegistroStatus.INATIVO,
+      }),
+    },
+    select: {
+      id: true,
+      nome: true,
+      email: true,
+      telefone: true,
+      role: true,
+      status: true,
+    },
+  });
 }
