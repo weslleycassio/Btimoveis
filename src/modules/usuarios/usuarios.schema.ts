@@ -15,4 +15,16 @@ export const updateUsuarioSchema = z
     message: 'Informe ao menos um campo para atualização',
   });
 
+export const updateMeuUsuarioSchema = z
+  .object({
+    nome: z.string().min(2).optional(),
+    email: z.string().email().optional(),
+    telefone: z.string().min(8).optional(),
+  })
+  .strict({ message: 'Há campos não permitidos para atualização' })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Informe ao menos um campo para atualização',
+  });
+
 export type UpdateUsuarioInput = z.infer<typeof updateUsuarioSchema>;
+export type UpdateMeuUsuarioInput = z.infer<typeof updateMeuUsuarioSchema>;
