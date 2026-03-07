@@ -2,7 +2,9 @@ import { UserRole } from '@prisma/client';
 import { z } from 'zod';
 
 export const usuarioIdParamSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string().refine((value) => z.string().cuid().safeParse(value).success || z.string().uuid().safeParse(value).success, {
+    message: 'ID inválido',
+  }),
 });
 
 export const updateUsuarioSchema = z
