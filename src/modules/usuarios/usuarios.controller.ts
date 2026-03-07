@@ -1,7 +1,11 @@
 import { RegistroStatus, UserRole } from '@prisma/client';
 import { Request, Response } from 'express';
 import { prisma } from '../../db/prisma';
-import { usuarioIdParamSchema, updateUsuarioSchema } from './usuarios.schema';
+import {
+  updateMeuUsuarioSchema,
+  updateUsuarioSchema,
+  usuarioIdParamSchema,
+} from './usuarios.schema';
 import * as usuariosService from './usuarios.service';
 
 export async function listUsuarios(req: Request, res: Response): Promise<void> {
@@ -76,6 +80,54 @@ export async function updateUsuario(req: Request, res: Response): Promise<void> 
 
   res.status(200).json({
     message: 'Usuário atualizado com sucesso',
+    data: {
+      id: usuarioAtualizado.id,
+      nome: usuarioAtualizado.nome,
+      email: usuarioAtualizado.email,
+      telefone: usuarioAtualizado.telefone,
+      role: usuarioAtualizado.role,
+      ativo: usuarioAtualizado.status === RegistroStatus.ATIVO,
+    },
+  });
+}
+
+export async function updateMeuUsuario(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    res.status(401).json({ message: 'Usuário não autenticado' });
+    return;
+  }
+
+  const body = updateMeuUsuarioSchema.parse(req.body);
+
+  const usuarioAutenticado = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { id: true, email: true },
+  });
+
+  if (!usuarioAutenticado) {
+    res.status(404).json({ message: 'Usuário não encontrado' });
+    return;
+  }
+
+  if (body.email && body.email !== usuarioAutenticado.email) {
+    const emailEmUso = await prisma.user.findFirst({
+      where: {
+        email: body.email,
+        id: { not: usuarioAutenticado.id },
+      },
+      select: { id: true },
+    });
+
+    if (emailEmUso) {
+      res.status(400).json({ error: 'E-mail já está em uso' });
+      return;
+    }
+  }
+
+  const usuarioAtualizado = await usuariosService.updateMeuUsuario(usuarioAutenticado.id, body);
+
+  res.status(200).json({
+    message: 'Dados atualizados com sucesso',
     data: {
       id: usuarioAtualizado.id,
       nome: usuarioAtualizado.nome,
