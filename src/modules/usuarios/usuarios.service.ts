@@ -1,6 +1,7 @@
 import { RegistroStatus, UserRole } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import { prisma } from '../../db/prisma';
-import { UpdateMeuUsuarioInput, UpdateUsuarioInput } from './usuarios.schema';
+import { UpdateMeuUsuarioInput, UpdateMinhaSenhaInput, UpdateUsuarioInput } from './usuarios.schema';
 
 export async function listUsuarios(imobiliariaId: string): Promise<
   Array<{
@@ -73,4 +74,39 @@ export async function updateMeuUsuario(userId: string, data: UpdateMeuUsuarioInp
       status: true,
     },
   });
+}
+
+
+export async function updateMinhaSenha(data: UpdateMinhaSenhaInput & { userId: string }) {
+  const usuario = await prisma.user.findUnique({
+    where: { id: data.userId },
+    select: { id: true, passwordHash: true },
+  });
+
+  if (!usuario) {
+    throw new Error('Usuário não encontrado');
+  }
+
+  const senhaConfere = await bcrypt.compare(data.senhaAtual, usuario.passwordHash);
+
+  if (!senhaConfere) {
+    throw new Error('Senha atual inválida');
+  }
+
+  if (data.novaSenha !== data.confirmarNovaSenha) {
+    throw new Error('Nova senha e confirmação da senha não conferem');
+  }
+
+  const novaSenhaHash = await bcrypt.hash(data.novaSenha, 10);
+
+  await prisma.user.update({
+    where: { id: data.userId },
+    data: {
+      passwordHash: novaSenhaHash,
+    },
+  });
+
+  return {
+    message: 'Senha atualizada com sucesso',
+  };
 }

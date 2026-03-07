@@ -28,5 +28,12 @@ export const updateMeuUsuarioSchema = z
     message: 'Informe ao menos um campo para atualização',
   });
 
+export const updateMinhaSenhaSchema = z.object({
+  senhaAtual: z.string().min(1, 'Senha atual é obrigatória'),
+  novaSenha: z.string().min(6, 'A nova senha deve ter no mínimo 6 caracteres'),
+  confirmarNovaSenha: z.string().min(1, 'Confirmação da nova senha é obrigatória'),
+});
+
 export type UpdateUsuarioInput = z.infer<typeof updateUsuarioSchema>;
 export type UpdateMeuUsuarioInput = z.infer<typeof updateMeuUsuarioSchema>;
+export type UpdateMinhaSenhaInput = z.infer<typeof updateMinhaSenhaSchema>;
