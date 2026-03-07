@@ -43,6 +43,13 @@ export async function updateUsuario(req: Request, res: Response): Promise<void> 
     return;
   }
 
+  // Fallback defensivo: garante o comportamento correto para /usuarios/me
+  // mesmo se houver algum problema de resolução de rota no runtime.
+  if (req.params.id === 'me') {
+    await updateMeuUsuario(req, res);
+    return;
+  }
+
   const { id } = usuarioIdParamSchema.parse(req.params);
   const body = updateUsuarioSchema.parse(req.body);
 
