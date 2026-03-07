@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../db/prisma';
 import {
   updateMeuUsuarioSchema,
+  updateMinhaSenhaSchema,
   updateUsuarioSchema,
   usuarioIdParamSchema,
 } from './usuarios.schema';
@@ -144,4 +145,23 @@ export async function updateMeuUsuario(req: Request, res: Response): Promise<voi
       ativo: usuarioAtualizado.status === RegistroStatus.ATIVO,
     },
   });
+}
+
+
+export async function updateMinhaSenha(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    res.status(401).json({ message: 'Usuário não autenticado' });
+    return;
+  }
+
+  const body = updateMinhaSenhaSchema.parse(req.body);
+
+  const result = await usuariosService.updateMinhaSenha({
+    userId: req.user.id,
+    senhaAtual: body.senhaAtual,
+    novaSenha: body.novaSenha,
+    confirmarNovaSenha: body.confirmarNovaSenha,
+  });
+
+  res.status(200).json(result);
 }

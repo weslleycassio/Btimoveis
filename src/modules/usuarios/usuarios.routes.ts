@@ -8,5 +8,6 @@ export const usuariosRoutes = Router();
 usuariosRoutes.use(authMiddleware);
 usuariosRoutes.get('/', asyncHandler(usuariosController.listUsuarios));
 usuariosRoutes.put('/me', asyncHandler(usuariosController.updateMeuUsuario));
+usuariosRoutes.put('/me/senha', asyncHandler(usuariosController.updateMinhaSenha));
 usuariosRoutes.put('/id/:id', asyncHandler(usuariosController.updateUsuario));
 usuariosRoutes.put('/:id((?!me$)[^/]+)', asyncHandler(usuariosController.updateUsuario));
